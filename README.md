@@ -1,6 +1,6 @@
 # Credit Risk Probability Model for Alternative Data
 
-[![CI/CD Pipeline](https://github.com/YOUR_USERNAME/credit-risk-model/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/credit-risk-model/actions/workflows/ci.yml)
+[![CI/CD Pipeline](https://github.com/nardos-tsige/credit-risk-model/actions/workflows/ci.yml/badge.svg)](https://github.com/nardos-tsige/credit-risk-model/actions/workflows/ci.yml)
 
 **Bati Bank - Buy Now Pay Later Credit Scoring System**
 
