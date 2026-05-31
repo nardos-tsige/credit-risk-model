@@ -1,0 +1,12 @@
+__pycache__
+*.pyc
+venv
+venv_new
+venv313
+.git
+.gitignore
+README.md
+notebooks
+data
+mlruns
+*.db
