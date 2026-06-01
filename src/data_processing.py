@@ -3,11 +3,10 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.impute import SimpleImputer
-from src.woe_encoder import ManualWOEEncoder
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import OneHotEncoder
+from src.woe_encoder import ManualWOEEncoder
 
 class FeatureEngineer:
     def __init__(self, snapshot_date=None, random_state=42):
@@ -16,6 +15,7 @@ class FeatureEngineer:
         self.kmeans_model = None
         self.scaler = None
         self.woe_encoder = None
+        self.pipeline = None
         
     def clean_features(self, X):
         X_clean = X.copy()
@@ -29,6 +29,39 @@ class FeatureEngineer:
             imputer = SimpleImputer(strategy='median')
             X_clean = pd.DataFrame(imputer.fit_transform(X_clean), columns=X_clean.columns)
         return X_clean
+    
+    def build_pipeline(self, categorical_cols, numerical_cols):
+        categorical_transformer = Pipeline(steps=[
+            ('imputer', SimpleImputer(strategy='constant', fill_value='missing')),
+            ('onehot', OneHotEncoder(handle_unknown='ignore', sparse_output=False))
+        ])
+        
+        numerical_transformer = Pipeline(steps=[
+            ('imputer', SimpleImputer(strategy='median')),
+            ('scaler', StandardScaler())
+        ])
+        
+        preprocessor = ColumnTransformer(
+            transformers=[
+                ('num', numerical_transformer, numerical_cols),
+                ('cat', categorical_transformer, categorical_cols)
+            ],
+            remainder='drop'
+        )
+        
+        self.pipeline = Pipeline(steps=[('preprocessor', preprocessor)])
+        return self.pipeline
+    
+    def apply_woe_encoding(self, X, y, categorical_cols):
+        from src.woe_encoder import ManualWOEEncoder
+        self.woe_encoder = ManualWOEEncoder()
+        X_cat = X[categorical_cols].copy()
+        X_encoded = self.woe_encoder.fit_transform(X_cat, y)
+        X_result = X.drop(columns=categorical_cols)
+        X_result = pd.concat([X_result, X_encoded], axis=1)
+        print("WOE Encoding applied to:", categorical_cols)
+        print(self.woe_encoder.get_iv_summary())
+        return X_result
         
     def create_rfm_features(self, df):
         df = df.copy()
@@ -115,26 +148,9 @@ class FeatureEngineer:
         feature_cols = [col for col in customer_data.columns if col not in exclude_cols]
         X = customer_data[feature_cols]
         X = self.clean_features(X)
+        
+        categorical_cols = X.select_dtypes(include=['object']).columns.tolist()
+        if len(categorical_cols) > 0 and create_target:
+            X = self.apply_woe_encoding(X, y, categorical_cols)
+        
         return X, y, customer_data['CustomerId']
-
-    def build_pipeline(self, categorical_cols, numerical_cols):
-        """Build sklearn Pipeline with preprocessing steps"""
-    
-        categorical_transformer = Pipeline(steps=[
-            ('imputer', SimpleImputer(strategy='constant', fill_value='missing')),
-            ('onehot', OneHotEncoder(handle_unknown='ignore', sparse_output=False))
-            ])
-    
-        numerical_transformer = Pipeline(steps=[
-            ('imputer', SimpleImputer(strategy='median')),
-            ('scaler', StandardScaler())
-        ])
-    
-        preprocessor = ColumnTransformer(
-            transformers=[
-            ('num', numerical_transformer, numerical_cols),
-            ('cat', categorical_transformer, categorical_cols)
-            ])
-    
-        self.pipeline = Pipeline(steps=[('preprocessor', preprocessor)])
-        return self.pipeline

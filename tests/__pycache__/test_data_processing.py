@@ -1,8 +1,14 @@
 import pytest
 import pandas as pd
 import numpy as np
+import sys
+import os
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from src.data_processing import FeatureEngineer
 from src.woe_encoder import ManualWOEEncoder
+
 
 class TestFeatureEngineer:
     
@@ -50,6 +56,7 @@ class TestFeatureEngineer:
         features = self.engineer.create_customer_features(self.sample_df)
         unique_customers = self.sample_df['CustomerId'].nunique()
         assert len(features) == unique_customers
+
 
 class TestWOEEncoder:
     
