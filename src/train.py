@@ -52,6 +52,8 @@ def train_models(X_train, X_test, y_train, y_test):
         print('='*50)
         
         with mlflow.start_run(run_name=model_name):
+            mlflow.log_param("model_type", model_name)
+            
             search = RandomizedSearchCV(
                 config['model'], config['params'], cv=3, scoring='roc_auc', 
                 n_iter=5, random_state=42, n_jobs=-1
@@ -75,13 +77,30 @@ def train_models(X_train, X_test, y_train, y_test):
             
             print(f"ROC-AUC: {metrics['roc_auc']:.4f}")
             print(f"Accuracy: {metrics['accuracy']:.4f}")
+            print(f"Precision: {metrics['precision']:.4f}")
+            print(f"Recall: {metrics['recall']:.4f}")
+            print(f"F1 Score: {metrics['f1']:.4f}")
             
             if metrics['roc_auc'] > best_score:
                 best_score = metrics['roc_auc']
                 best_model = search.best_estimator_
                 best_model_name = model_name
     
-    print(f"\n BEST MODEL: {best_model_name} with ROC-AUC: {best_score:.4f}")
+    with mlflow.start_run(run_name="Best_Model_Registration"):
+        mlflow.log_param("best_model_name", best_model_name)
+        mlflow.log_metric("best_roc_auc", best_score)
+        mlflow.sklearn.log_model(
+            best_model, 
+            "credit_risk_model",
+            registered_model_name="CreditRiskRandomForest"
+        )
+        mlflow.set_tag("model_type", "credit_scoring")
+        mlflow.set_tag("version", "1.0.0")
+    
+    print(f"\n{'='*60}")
+    print(f"BEST MODEL: {best_model_name} with ROC-AUC: {best_score:.4f}")
+    print('='*60)
+    
     return best_model, best_model_name
 
 def main():
@@ -95,14 +114,27 @@ def main():
         X, y, test_size=0.2, random_state=42, stratify=y
     )
     
+    print(f"\nData split:")
+    print(f"   Training set: {X_train.shape}")
+    print(f"   Test set: {X_test.shape}")
+    print(f"   Target distribution - Train: {y_train.mean():.2%} high-risk")
+    print(f"   Target distribution - Test: {y_test.mean():.2%} high-risk")
+    
     best_model, model_name = train_models(X_train, X_test, y_train, y_test)
     
     os.makedirs('models', exist_ok=True)
     joblib.dump(best_model, 'models/best_model.pkl')
     joblib.dump(engineer, 'models/feature_engineer.pkl')
     
+    feature_names = X_train.columns.tolist()
+    joblib.dump(feature_names, 'models/feature_names.pkl')
+    
     print("\n Training complete!")
-    print(f"Best model saved to models/best_model.pkl")
+    print(f"   Best model: {model_name}")
+    print(f"   Location: models/best_model.pkl")
+    print("\n To view MLflow dashboard:")
+    print("   mlflow ui")
+    print("   Then open http://localhost:5000")
 
 if __name__ == "__main__":
     main()

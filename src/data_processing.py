@@ -4,6 +4,10 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.impute import SimpleImputer
 from src.woe_encoder import ManualWOEEncoder
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.impute import SimpleImputer
 
 class FeatureEngineer:
     def __init__(self, snapshot_date=None, random_state=42):
@@ -112,3 +116,25 @@ class FeatureEngineer:
         X = customer_data[feature_cols]
         X = self.clean_features(X)
         return X, y, customer_data['CustomerId']
+
+    def build_pipeline(self, categorical_cols, numerical_cols):
+        """Build sklearn Pipeline with preprocessing steps"""
+    
+        categorical_transformer = Pipeline(steps=[
+            ('imputer', SimpleImputer(strategy='constant', fill_value='missing')),
+            ('onehot', OneHotEncoder(handle_unknown='ignore', sparse_output=False))
+            ])
+    
+        numerical_transformer = Pipeline(steps=[
+            ('imputer', SimpleImputer(strategy='median')),
+            ('scaler', StandardScaler())
+        ])
+    
+        preprocessor = ColumnTransformer(
+            transformers=[
+            ('num', numerical_transformer, numerical_cols),
+            ('cat', categorical_transformer, categorical_cols)
+            ])
+    
+        self.pipeline = Pipeline(steps=[('preprocessor', preprocessor)])
+        return self.pipeline
